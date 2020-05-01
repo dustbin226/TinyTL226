@@ -1,5 +1,7 @@
 /**
- *
+ * Copyright (C) 2020, Yujian Lin, All rights reserved.
+ * 
+ * @brief
  * 
  */
 
@@ -27,29 +29,30 @@ namespace Memory
  * 
  * 
  */ 
-template<typename T, size_t pool_size = 4096, uint32_t block_num = 20>
+template<typename T, size_t pool_size = 4096, uint32_t slot_num = 20>
 class BaseMemoryPool
 {
 public:
     // stl要求的traits接口
     typedef T           value_type;
+    typedef size_t      size_type;
+    typedef ptrdiff_t   difference_type;
+
     typedef T*          pointer;
     typedef const T*    const_pointer;
     typedef T&          reference;
     typedef const T&    const_reference;
-    typedef size_t      size_type;
-    typedef ptrdiff_t   difference_type;
 
     // stl allocator要求的rebind接口
     template<typename U>
     struct rebind { typedef BaseMemoryPool<U> other; };
 
     BaseMemoryPool() noexcept;
-    BaseMemoryPool(const BaseMemoryPool& dummy) noexcept;
+    BaseMemoryPool(const BaseMemoryPool& dummy) = delete;
     BaseMemoryPool(BaseMemoryPool&& dummy) noexcept;
 
     template<typename U>
-    BaseMemoryPool(const BaseMemoryPool<U>& dummy) noexcept;
+    BaseMemoryPool(const BaseMemoryPool<U>& dummy)  = delete;
 
     BaseMemoryPool& operator=(const BaseMemoryPool& dummy) = delete;
     BaseMemoryPool& operator=(BaseMemoryPool&& dummy) noexcept;
@@ -80,24 +83,57 @@ public:
 private:
     union Slot
     {
-        T elem;
+        value_type elem;
         Slot* next;
     };
     
     Slot* _current_slot;
-    Slot* _current_block;
     Slot* _last_slot;
-    Slot* _free_slots_list;
+    Slot* _slots_list_header;
 
     inline size_type _PadPointer(char* p, size_type align) const noexcept;
     void _AllocateBlock();
-    static_assert(pool_size >= block_num*sizeof(Slot), 
-        "Pool size is not enough for blocks you want.");
+    static_assert(pool_size >= slot_num*sizeof(Slot), 
+        "--------------------------------------------------\
+         * Error (allocator/base_memory_pool):             \
+           内存池大小不足以容纳申请的区块 !                    \
+         --------------------------------------------------");
 };
-} // Memory
-} // TinyTL
+
+/**
+ * @brief
+ *  对void类型的偏特化 
+ */ 
+template<>
+class BaseMemoryPool<void>
+{
+public:
+    // stl要求的traits接口
+    typedef void        value_type;
+    typedef size_t      size_type;
+    typedef ptrdiff_t   difference_type;
+
+    typedef void*       pointer;
+    typedef const void* const_pointer;
+
+    // stl allocator要求的rebind接口
+    template<typename U>
+    struct rebind { typedef BaseMemoryPool<U> other; };
+
+    BaseMemoryPool() noexcept;
+    BaseMemoryPool(const BaseMemoryPool& dummy) noexcept;
+    BaseMemoryPool(BaseMemoryPool&& dummy) noexcept;
+
+    template<typename U>
+    BaseMemoryPool(const BaseMemoryPool<U>& dummy) noexcept;
+
+    ~BaseMemoryPool() noexcept;
+};
+
+} // namespace Memory
+} // namespace TinyTL
 #if _IN_YUJIANLIN_DEV_MOD_ == 2018202296L
-} // YujianLinDev
+} // namesapce YujianLinDev
 #endif
 
 /* Add New Contents Here */
